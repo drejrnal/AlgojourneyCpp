@@ -10,7 +10,9 @@ class wordBreak{
 public:
 
     void dfsAlongString( int begin, string &s, vector<string> &path,
-                                   TrieNode *root, vector<string> &res) {
+                                   TrieNode *root, vector<string> &res, const vector<bool> &dp) {
+        if( !dp[begin] )
+            return;
         if( begin == s.length() ){
             string sentence = "";
             for( string &ele: path)
@@ -19,35 +21,60 @@ public:
             res.push_back(sentence);
             return;
         }
-
         TrieNode *trav = root;
         for( int i = begin; i < s.length(); i++ ){
+            //查找s.substr[begin,i]是否在前缀树中
             int pos = s[i] - 'a';
             if( trav->children[pos] == nullptr )
                 return;
             if( trav->children[pos]->isEndOfWord ){
                 path.emplace_back( s.substr(begin, i - begin+1) );
-                dfsAlongString( i+1, s, path, root, res );
+                dfsAlongString( i+1, s, path, root, res, dp );
                 path.pop_back();
             }
             trav = trav->children[pos];
         }
+    }
 
+    //dp[i]表示s[i...s.length()-1]子字符串是否能拆成字典中的单词
+    vector<bool> calcuDp( string &s, TrieNode *root ){
+        vector<bool> dp( s.length()+1, false );
+        dp[s.length()] = true;
+
+        for( int i = s.length()-1; i >= 0; i-- ){
+            //以s[i]为起点查找前缀树中包含s[i...]的前缀
+            TrieNode *trav = root;
+            for( int j = i; j < s.length(); j++ ){
+                int pos = s[j] - 'a';
+                if( trav->children[pos] == nullptr )
+                    break;
+                trav = trav->children[pos];
+                if ( trav->isEndOfWord )
+                    dp[i] = dp[j+1];
+                if( dp[i] )
+                    break;
+            }
+        }
+
+        return dp;
     }
 
     vector<string> enumWordBreak( string &s, vector<string> &wordDict ){
         Trie trie;
+
         for( string &ele : wordDict ){
             trie.insert( ele );
         }
         vector<string> path;
         vector<string> result;
-        dfsAlongString(0, s,path, trie.getRoot(), result );
+        vector<bool> dp = calcuDp( s, trie.getRoot() );
+        dfsAlongString(0, s,path, trie.getRoot(), result, dp );
         for( string &ele: result )
             cout<<ele<<endl;
         return result;
     }
 
+    //dp[i]表示s[0...i]能否拆成字典中的单词
     bool canWordBreak( string &s, vector<string> &wordDict ){
         vector<bool> dp(s.length(), false);
         unordered_set<string> dict(wordDict.begin(), wordDict.end());
@@ -73,8 +100,10 @@ public:
 };
 
 int main(){
+    //string s = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    //vector<string> dict = { "a","aa","aaa","aaaa","aaaaa","aaaaaa","aaaaaaa","aaaaaaaa","aaaaaaaaa","aaaaaaaaaa"};
     string s = "leetcode";
-    vector<string> dict = { "lee", "tco","de" ,"leet", "code" };
+    vector<string> dict = { "leet", "lee", "code", "tcod","e"};
     wordBreak wBreak;
     //cout<<(wBreak.canWordBreak(s, dict)?1:0)<<endl;
     wBreak.enumWordBreak( s, dict );
