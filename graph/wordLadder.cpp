@@ -7,6 +7,8 @@
 class WordLadder{
 
 public:
+
+    /*
     bool diffOneS1(string &word1, string &word2 ){
         int count = 0;
         for( int i = 0; i < word1.length(); i++ ){
@@ -17,6 +19,7 @@ public:
         }
         return count <= 1;
     }
+
     bool diffOneS2(string &word1, string &word2 ){
         int res = 0;
         int bucket[26] = {0};
@@ -33,17 +36,38 @@ public:
                 bucket[index]--;
         }
         return res <= 1;
+    }*/
+
+    vector<string> findNeighbor( string &source, unordered_set<string> &candidates ){
+        string temp;
+        vector<string> res;
+        for( int i = 0; i < source.length(); i++ ){
+            string pre = source.substr(0, i);
+            string pos = source.substr( i + 1, source.length() - i - 1 );
+            for (int j = 0; j < 26; ++j) {
+                temp =pre;
+                temp += (j+'a');
+                temp += pos;
+                if( candidates.find( temp ) != candidates.end() )
+                    res.push_back( temp );
+            }
+        }
+        return res;
     }
+
     int ladderLength(string &beginWord, string &endWord, vector<string> &wordList ){
         queue<string> q;
+        unordered_set<string> neighbors;
+        for( string &ele : wordList )
+            neighbors.insert( ele );
         unordered_map<string, int> distance;
         distance[beginWord] = 1;
         q.push( beginWord );
         while( !q.empty() ){
-            string &top = q.front();
+            string top = q.front();
             q.pop();
-            for( string &candidate : wordList ){
-                if( distance.find(candidate) == distance.end() && diffOneS1( top, candidate ) ){
+            for( string &candidate : findNeighbor(top, neighbors) ){
+                if( distance.find(candidate) == distance.end()  ){
                     q.push( candidate );
                     distance[candidate] = distance[top] + 1;
                     if( candidate == endWord )
@@ -53,6 +77,7 @@ public:
         }
         return distance.count(endWord) == 0 ? 0 : distance[endWord];
     }
+
 };
 
 int main(){
@@ -70,5 +95,4 @@ int main(){
     };
     cout<<wordLadder.ladderLength( beginWord, endWord, wordList )<<endl;
     return 0;
-
 }
