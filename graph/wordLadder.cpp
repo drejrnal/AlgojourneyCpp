@@ -55,6 +55,31 @@ public:
         return res;
     }
 
+    bool findNeighborS2( string &source, unordered_set<string> &candidates,
+                                 unordered_set<string> &nextLevelList,
+                                 unordered_set<string> &endList,
+                                 unordered_set<string> &visited ){
+        string temp;
+
+        for( int i = 0; i < source.length(); i++ ){
+            string pre = source.substr(0, i);
+            string pos = source.substr( i + 1, source.length() - i - 1 );
+            for (int j = 0; j < 26; ++j) {
+                temp =pre;
+                temp += (j+'a');
+                temp += pos;
+                //source的某一邻接点已经被另一端访问过，即两端节点相遇
+                if( endList.find( temp ) != endList.end() )
+                    return true;
+                if( visited.find(temp) == visited.end() && candidates.find( temp ) != candidates.end() ) {
+                    visited.insert( temp );
+                    nextLevelList.insert(temp);
+                }
+            }
+        }
+        return false;
+    }
+
     int ladderLength(string &beginWord, string &endWord, vector<string> &wordList ){
         queue<string> q;
         unordered_set<string> neighbors;
@@ -70,12 +95,37 @@ public:
                 if( distance.find(candidate) == distance.end()  ){
                     q.push( candidate );
                     distance[candidate] = distance[top] + 1;
-                    if( candidate == endWord )
+                    if( candidate == endWord ) {
                         return distance[candidate];
+                    }
                 }
             }
         }
         return distance.count(endWord) == 0 ? 0 : distance[endWord];
+    }
+
+    //双向搜索
+    int BiDirectionLadder( string &beginWord, string &endWord, vector<string> &wordList ){
+        unordered_set<string> beginDirection, endDirection, neighbors, visited;
+        for( string &ele : wordList )
+            neighbors.insert( ele );
+        int step = 1;
+
+        beginDirection.insert( beginWord );
+        endDirection.insert( endWord );
+        while( !beginDirection.empty() && !endDirection.empty() ){
+            if( beginDirection.size() > endDirection.size() )
+                std::swap( beginDirection, endDirection );
+            unordered_set<string> nextLevel;
+            for( string word : beginDirection ){
+                if( findNeighborS2( word, neighbors, nextLevel, endDirection, visited) ){
+                    return step+1;
+                }
+            }
+            step++;
+            beginDirection = nextLevel;
+        }
+        return 0;
     }
 
 };
@@ -94,5 +144,6 @@ int main(){
                                 "io","be","fm","ta","tb","ni","mr","pa","he","lr","sq","ye"
     };
     cout<<wordLadder.ladderLength( beginWord, endWord, wordList )<<endl;
+    //cout<<wordLadder.BiDirectionLadder( beginWord, endWord, wordList )<<endl;
     return 0;
 }
