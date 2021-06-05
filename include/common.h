@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <stack>
 #include <queue>
 
 #include <unordered_map>
@@ -17,6 +18,7 @@
 #include <algorithm>
 #include <numeric>
 #include <map>
+#include <set>
 #include <sstream>
 
 using namespace std;
