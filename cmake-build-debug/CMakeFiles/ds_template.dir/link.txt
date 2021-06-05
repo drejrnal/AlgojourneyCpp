@@ -1,2 +1,0 @@
-/Library/Developer/CommandLineTools/usr/bin/ar qc libds_template.a CMakeFiles/ds_template.dir/include/Trie.cpp.o
-/Library/Developer/CommandLineTools/usr/bin/ranlib libds_template.a
