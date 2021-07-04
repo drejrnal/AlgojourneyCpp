@@ -1,13 +1,20 @@
 //
 // Created by luoxiYun on 2021/4/3.
+// modify on 2021/4/10 2021/6/20
 //
 
 #include "common.h"
 
 class WordLadder{
 
-public:
+private:
+    unordered_set<string> dictionary; //类依赖的资源：字典
+    unordered_map<string, vector<string>> graph_path; //bfs过程中构建的图，便于dfs构建从beginWord->endWord的路径
 
+public:
+    explicit WordLadder( vector<string> &wordSet ):dictionary(wordSet.begin(), wordSet.end()){
+
+    }
 
     /*
     bool diffOneS1(string &word1, string &word2 ){
@@ -84,16 +91,14 @@ public:
 
     int ladderLength(string &beginWord, string &endWord, vector<string> &wordList ){
         queue<string> q;
-        unordered_set<string> neighbors;
-        for( string &ele : wordList )
-            neighbors.insert( ele );
+
         unordered_map<string, int> distance;
         distance[beginWord] = 1;
         q.push( beginWord );
         while( !q.empty() ){
             string top = q.front();
             q.pop();
-            for( string &candidate : findNeighbor(top, neighbors) ){
+            for( string &candidate : findNeighbor(top, dictionary) ){
                 if( distance.find(candidate) == distance.end()  ){
                     q.push( candidate );
                     distance[candidate] = distance[top] + 1;
@@ -112,10 +117,9 @@ public:
      * 因此不存在beginWord->endWord的转换
      */
     int BiDirectionLadder( string &beginWord, string &endWord, vector<string> &wordList ){
-        unordered_set<string> beginDirection, endDirection, neighbors, visited;
-        for( string &ele : wordList )
-            neighbors.insert( ele );
-        if( neighbors.find( endWord ) == neighbors.end() )
+        unordered_set<string> beginDirection, endDirection,  visited;
+
+        if( dictionary.find( endWord ) == dictionary.end() )
             return 0;
         int step = 1;
 
@@ -126,7 +130,7 @@ public:
                 std::swap( beginDirection, endDirection );
             unordered_set<string> nextLevel;
             for( string word : beginDirection ){
-                if( findNeighborS2( word, neighbors, nextLevel, endDirection, visited) ){
+                if( findNeighborS2( word, dictionary, nextLevel, endDirection, visited) ){
                     return step+1;
                 }
             }
@@ -139,7 +143,7 @@ public:
     /*
      * 使用队列实现双向BFS搜索，关键在于如何确定两方向节点相遇
      * 两种方法：1. 使用两个队列，分别记录两方向的搜索空间
-     *         2.
+     *         2.使用一个队列，正向和反向交替访问图中元素
      */
     int neighborTraverse(string &word, unordered_set<string> &dict,
                           queue<string> &direction,
@@ -166,7 +170,7 @@ public:
         return -1;
     }
     int BiDirectionLadderUsingQueue( string &beginWord, string &endWord, vector<string> &wordList ){
-        unordered_set<string> dictionary(wordList.begin(),wordList.end());
+
         if( dictionary.find( endWord ) == dictionary.end() )
             return 0;
         queue<string> beginDirection, endDirection;
@@ -201,7 +205,6 @@ public:
 };
 
 int main(){
-    WordLadder wordLadder;
     string beginWord = "cet", endWord = "ism";
     /*
     vector<string> wordList = { "si","go","se","cm","so","ph","mt","db","mb",
@@ -236,6 +239,7 @@ int main(){
             "gas","rte","ian","pot","ask","wag","hag","amy",
             "nag","ron","soy","gin","don","tug","fay","vic","boo","nam","ave","buy","sop","but","orb","fen","paw","his","sub","bob","yea","oft","inn","rod","yam","pew","web","hod","hun","gyp","wei","wis","rob","gad","pie","mon","dog","bib","rub","ere","dig","era","cat","fox","bee","mod","day","apr","vie","nev","jam","pam","new","aye","ani","and","ibm","yap","can","pyx","tar","kin","fog","hum","pip","cup","dye","lyx","jog","nun","par","wan","fey","bus","oak","bad","ats","set","qom","vat","eat","pus","rev","axe","ion","six","ila","lao","mom","mas","pro","few","opt","poe","art","ash","oar","cap","lop","may","shy","rid","bat","sum","rim","fee","bmw","sky","maj","hue","thy","ava","rap","den","fla","auk","cox","ibo","hey","saw","vim","sec","ltd","you","its","tat","dew","eva","tog","ram","let","see","zit","maw","nix","ate","gig","rep","owe","ind","hog","eve","sam","zoo","any","dow","cod","bed","vet","ham","sis","hex","via","fir","nod","mao","aug","mum","hoe","bah","hal","keg","hew","zed","tow","gog","ass","dem","who","bet","gos","son","ear","spy","kit","boy","due","sen","oaf","mix","hep","fur","ada","bin","nil","mia","ewe","hit","fix","sad","rib","eye","hop","haw","wax","mid","tad","ken","wad","rye","pap","bog","gut","ito","woe","our","ado","sin","mad","ray","hon","roy","dip","hen","iva","lug","asp","hui","yak","bay","poi","yep","bun","try","lad","elm","nat","wyo","gym","dug","toe","dee","wig","sly","rip","geo","cog","pas","zen","odd","nan","lay","pod","fit","hem","joy","bum","rio","yon","dec","leg","put","sue","dim","pet","yaw","nub","bit","bur","sid","sun","oil","red","doc","moe","caw","eel","dix","cub","end","gem","off","yew","hug","pop","tub","sgt","lid","pun","ton","sol","din","yup","jab","pea","bug","gag","mil","jig","hub","low","did","tin","get","gte","sox","lei","mig","fig","lon","use","ban","flo","nov","jut","bag","mir","sty","lap","two","ins","con","ant","net","tux","ode","stu","mug","cad","nap","gun","fop","tot","sow","sal","sic","ted","wot","del","imp","cob","way","ann","tan","mci","job","wet","ism","err","him","all","pad","hah","hie","aim","ike","jed","ego","mac","baa","min","com","ill","was","cab","ago","ina","big","ilk","gal","tap","duh","ola","ran","lab","top","gob","hot","ora","tia","kip","han","met","hut","she","sac","fed","goo","tee","ell","not","act","gil","rut","ala","ape","rig","cid","god","duo","lin","aid","gel","awl","lag","elf","liz","ref","aha","fib","oho","tho","her","nor","ace","adz","fun","ned","coo","win","tao","coy","van","man","pit","guy","foe","hid","mai","sup","jay","hob","mow","jot","are","pol","arc","lax","aft","alb","len","air","pug","pox","vow","got","meg","zoe","amp","ale","bud","gee","pin","dun","pat","ten","mob"
     };
+    WordLadder wordLadder(wordList);
     cout<<wordLadder.ladderLength( beginWord, endWord, wordList )<<endl;
     cout<<wordLadder.BiDirectionLadder( beginWord, endWord, wordList )<<endl;
     cout<<wordLadder.BiDirectionLadderUsingQueue( beginWord, endWord, wordList)<<endl;
