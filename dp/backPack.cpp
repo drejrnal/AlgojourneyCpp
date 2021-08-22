@@ -77,18 +77,52 @@ public:
         }
     }
 
+    /*
+     * 石头碰撞问题
+     * 给定一组石头，每个石头有一个正数的重量。每一轮开始的时候，选择两个石头一起碰撞，
+     * 假定两个石头的重量为x，y，x<=y,碰撞结果为
+     * 1. 如果x==y，碰撞结果为两个石头消失
+     * 2. 如果x != y，碰撞结果两个石头消失，生成一个新的石头，新石头重量为y-x
+     * 最终最多剩下一个石头为结束。求解最小的剩余石头质量的可能性是多少。
+     *
+     * 思路：
+     * 将数组分成两部分，记为A和B，使 | A - B |值尽可能小
+     * 数组分开后，尽可能使其中一半的和往sum/2靠
+     */
+    int partition_array( vector<int> stones ){
+        int sum = accumulate( stones.begin(), stones.end(), 0 );
+        vector<int> dp( sum/2 + 1);
+        for( int i = 0; i < stones.size(); i++ ) {
+            for (int j = sum / 2; j >= 0; j--) {
+                if ( j >= stones[i] )
+                    dp[j] = max( dp[j], dp[j - stones[i]] + stones[i] );
+            }
+        }
+        int other = sum - dp[sum/2];
+        return other - dp[sum/2];
+    }
+
 };
 
-/*
+
 int main(){
-    vector<int> profit = { 6,7,8 };
+    /*vector<int> profit = { 6,7,8 };
     vector<int> group = { 2,3,5 };
     int n = 10;
     int target = 5;
     backPack backPack01;
     //cout<<backPack01.partitionIntoEqual(nums);
-    cout<<backPack01.profitScheme( group, profit, n, target )<<endl;
+    cout<<backPack01.profitScheme( group, profit, n, target )<<endl;*/
+    int num;
+    cin>>num;
+    backPack backPack01;
+    vector<int> stones;
+    for( int i = 0; i < num; i++ ) {
+        int stone;
+        cin >> stone;
+        stones.push_back(stone);
+    }
+    cout<<backPack01.partition_array( stones )<<endl;
     return 0;
 }
- */
 

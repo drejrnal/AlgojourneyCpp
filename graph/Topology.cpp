@@ -9,7 +9,6 @@ class Topology {
     bool cycle = false;
 
 public:
-
     void dfs(vector<vector<int>> &graph, vector<bool> &visited, vector<bool> &onstack, int node) {
         visited[node] = true;
         onstack[node] = true;
@@ -24,7 +23,29 @@ public:
         }
         onstack[node] = false;
     }
-
+    //判断图中是否有环，如果遇到环，则结束当前节点dfs的过程，color[node] = 1表明node节点在栈中。
+    bool has_loop_on_dfs( vector<vector<int>> &graph, vector<int> &color, int start ){
+        if( color[start] > 0 )
+            return color[start] == 1;
+        color[start] = 1;
+        for( int adjacent : graph[start] ){
+            if(has_loop_on_dfs(graph, color, adjacent)){
+                return true;
+            }
+        }
+        color[start] = 2;
+    }
+    //执行完该方法后 可判断图中哪些节点是环上节点，哪些不是。
+    vector<int> eventualSafeNodes(vector<vector<int>>& graph) {
+        vector<int> color( graph.size(), 0 );
+        vector<int> res;
+        for( int i = 0; i < graph.size(); i++ ){
+            if( has_loop_on_dfs(graph,color,i) )
+                continue;
+            res.push_back(i);
+        }
+        return res;
+    }
     /*
      * 注意广度优先搜索一定要注意起始点不同，运算的结果也会不同
      */

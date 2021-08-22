@@ -4,7 +4,9 @@
 
 #ifndef WALKING_LEETCODE_BIINDEXTREE_H
 #define WALKING_LEETCODE_BIINDEXTREE_H
-
+/*
+ * binary indexed tree 树状数组
+ */
 #include "common.h"
 
 class biIndexedTree{

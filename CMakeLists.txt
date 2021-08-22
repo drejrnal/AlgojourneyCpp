@@ -8,6 +8,6 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 add_library(ds_template include/Trie.cpp )
 
 add_executable(walking_leetcode
-        array/circular_array_loop.cpp
+        series_problem/stone_game.cpp
         )
 target_link_libraries(walking_leetcode ds_template)
