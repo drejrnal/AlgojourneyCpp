@@ -15,6 +15,7 @@
 
 class Solution {
     vector<vector<int>> move = {
+            //上、下、左、右
             {-1, 0}, {1, 0},
             {0, -1}, {0, 1}
     };

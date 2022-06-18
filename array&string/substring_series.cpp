@@ -40,6 +40,43 @@ int longest_repeatable_string( const string &str ){
     }
     return maximum_len;
 }
+/*
+ * 给你一个字符串 s ，请你返回满足以下条件的最长子字符串的长度：每个元音字母，即 'a'，'e'，'i'，'o'，'u',
+ * 在子字符串中都恰好出现了偶数次。
+ */
+int findLongestSubstring( string s ){
+    vector<int> pre( 1 << 5, -1 );
+    int status = 0;
+    int res = 0;
+    pre[status] = 0;
+    for( int i = 0; i < s.length(); i++ ){
+        switch (s[i]) {
+            case 'a':
+                status ^= ( 1<<0 );
+                break;
+            case 'e':
+                status ^= ( 1<<1 );
+                break;
+            case 'i':
+                status ^= ( 1<<2 );
+                break;
+            case 'o':
+                status ^= ( 1<<3 );
+                break;
+            case 'u':
+                status ^= ( 1<<4 );
+                break;
+            default:
+                break;
+        }
+        if( pre[status] >= 0 )
+            res = max( res, i + 1 - pre[status] );
+        else
+            pre[status] = i+1;
+    }
+    return res;
+}
+
 int main(){
     string s;
     while ( cin>> s ){

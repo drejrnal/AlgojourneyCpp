@@ -4,8 +4,9 @@
 
 #include "common.h"
 
-// longest increasing subsequence
-
+/* longest increasing subsequence
+ * 最长非递减序列系列问题
+ */
 class LIS{
 
 public:
@@ -51,11 +52,36 @@ public:
         cout<<endl;
         return result;
     }
+    /*
+     * 力扣(1964): find the longest obstacle course at each position
+     */
+    vector<int> longestObstacleCourse( vector<int> &obstacles ){
+        int max_length = obstacles.size();
+        //min_at_length[i]的含义表示 长度为i的非递减序列中，序列最后一个元素最小值
+        vector<int> min_at_length( max_length+1, INT32_MAX );
+        vector<int> dp( max_length, 0 );
+        min_at_length[0] = 0;
+        min_at_length[1] = obstacles[0];
+        dp[0] = 1;
+        for( int i = 1; i < max_length; i++ ){
+            auto iter = upper_bound(min_at_length.begin(), min_at_length.end(), obstacles[i]);
+            *iter = min( *iter, obstacles[i] );
+            dp[i] = distance(min_at_length.begin(), iter);
+        }
+        for( int ele : min_at_length )
+            cout<<ele<<" ";
+        cout<<endl;
+        return dp;
+    }
 };
 
 int main(){
-    vector<int> input = { 2,1,5,3,6,4,8,9,7 };
+    vector<int> input = { 0,1,2,3,4,4,8,9,9 };
     LIS lis;
-    lis.longestIncreasingSubsequence(input);
+    //lis.longestIncreasingSubsequence(input);
+    vector<int> res = lis.longestObstacleCourse( input );
+    for( int ele : res )
+        cout<<ele<<" ";
+    cout<<endl;
     return 0;
 }

@@ -3,10 +3,10 @@
 //
 
 #include "common.h"
-#include <unordered_set>
-class NQueens{
 
+class NQueens{
     int N;
+    vector<vector<string>> layout;
 public:
     NQueens( int N_ ):N(N_){}
     /*
@@ -43,16 +43,60 @@ public:
             column.pop_back();
         }
     }
+    //使用状态压缩进行dfs(将布尔数组转换成整数)
+    void dfs( int row, int col, int diagonal, int reverse_diagonal, vector<int> &column ){
+        if( row == N ){
+            vector<string> res;
+            for( int i = 0; i < N; i++ ){
+                int col = column[i];
+                string row = "";
+                for( int j = 0; j < N; j++ ) {
+                    if (j == col)
+                        row +="Q";
+                    else
+                        row +=".";
+                }
+                res.push_back( row );
+            }
+            layout.push_back( res );
+            return;
+        }
+        for( int i = 0; i < N; i++ ){
+            if( ((col >> i) & 1) || ((diagonal >> (row-i+N-1)) & 1) || ((reverse_diagonal >> (row+i)) & 1) )
+                continue;
+            column.push_back( i );
+            col ^= ( 1 << i );
+            diagonal ^= ( 1 <<( row - i + N -1) );
+            reverse_diagonal ^= ( 1 << (row+i) );
+            dfs( row+1, col, diagonal, reverse_diagonal, column );
+            col ^= ( 1 << i );
+            diagonal ^= ( 1 <<( row - i + N -1) );
+            reverse_diagonal ^= ( 1 << (row+i) );
+            column.pop_back();
+        }
+
+    }
+    vector<vector<string>> solveNQueen( int n ){
+        vector<int> column;
+        dfs( 0, 0, 0, 0, column );
+        return layout;
+    }
 
 };
-/*
+
 int main( ){
     int n;
     cin>>n;
     NQueens nQueens(n);
-    unordered_set<int> cols, diagnal1, diagnal2;
-    vector<int> column;
-    nQueens.dfs(0, cols, diagnal1, diagnal2, column);
+//    unordered_set<int> cols, diagnal1, diagnal2;
+
+    //nQueens.dfs(0, cols, diagnal1, diagnal2, column);
+    vector<vector<string>> res = nQueens.solveNQueen( n );
+    for( auto &arr : res ){
+        for( auto &row : arr ){
+            cout<<row<<" ";
+        }
+        cout<<endl;
+    }
     return 0;
 }
- */

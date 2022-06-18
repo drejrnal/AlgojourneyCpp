@@ -8,6 +8,6 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 add_library(ds_template include/Trie.cpp )
 
 add_executable(walking_leetcode
-        series_problem/stone_game.cpp
+        backtracking/restore_ip.cpp
         )
 target_link_libraries(walking_leetcode ds_template)

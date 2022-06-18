@@ -4,9 +4,7 @@
 
 /**
  * 判断一个 IP 是否属于一个子网。
-
 例如 192.168.67.211 属于 192.168.64.0/20。
-
  */
 #include "common.h"
 using namespace std;

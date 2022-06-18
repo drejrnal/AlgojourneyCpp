@@ -68,6 +68,10 @@ public:
         return backPackComplete( coins, vals, target );
     }
 
+    /*
+     * 力扣 题目416 partition equal subset sum
+     * 前提：数组内元素均为正数
+     */
     bool partitionIntoEqual( vector<int> &nums ){
         int sum = accumulate( nums.begin(), nums.end(), 0 );
         if ( sum & 1 )

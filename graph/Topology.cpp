@@ -14,7 +14,6 @@ public:
         onstack[node] = true;
         for (int adj : graph[node]) {
             if (!visited[adj]) {
-                visited[adj] = true;
                 dfs(graph, visited, onstack, adj);
             } else if (onstack[adj]) {
                 cycle = true;
@@ -55,6 +54,9 @@ public:
             if (inEdge[i] == 0)
                 q.push(i);
         int visit = 0;
+        /*
+         * 如果图中存在环，则一定存在一个节点，其入度大于0，队列为空退出循环，visited不等于总节点数目
+         */
         while (!q.empty()) {
             visit++;
             int top = q.front();
@@ -67,8 +69,6 @@ public:
         return visit == inEdge.size();
     }
 
-
-
     //prerequisites[i][1]->prerequisites[i][0]
     bool canFinish(int numCourses, vector<vector<int>> &prerequisites) {
         vector<vector<int>> graph(numCourses);
@@ -78,10 +78,39 @@ public:
             graph[ele[1]].push_back(ele[0]);
             inEdge[ele[0]]++;
         }
-        //vector<bool> visited( numCourses, false );
-        //vector<bool> onStack( numCourses, false);
-
+        /*
+         * 使用dfs求解
+        vector<bool> visited( numCourses, false );
+        vector<bool> onStack( numCourses, false);
+        for( int i = 0; i < numCourses; i++ ){
+            if( !visited[i] ){
+                dfs(graph, visited, onStack, i);
+            }
+        }
+        return !cycle;*/
         return bfs(inEdge, graph);
+    }
+    /*
+     * 力扣题目 797 All paths from source to target
+     * 在DAG图上寻找从0到n-1的所有路径
+     */
+    vector<vector<int>> allPathsSourceTarget( vector<vector<int>> &graph ){
+        vector<vector<int>> res;
+        vector<int> on_fly;
+        dfs_on_DAG( 0, graph, on_fly, res );
+        return res;
+    }
+    void dfs_on_DAG( int node, vector<vector<int>> &graph, vector<int> &on_fly, vector<vector<int>> &result ){
+        on_fly.push_back( node );
+        if( graph[node].empty() ){
+            result.push_back( on_fly );
+            on_fly.pop_back();
+            return;
+        }
+        for( int adj : graph[node] ){
+            dfs_on_DAG( adj, graph, on_fly, result );
+        }
+        on_fly.pop_back();
     }
 
 };
