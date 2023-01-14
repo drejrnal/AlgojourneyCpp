@@ -108,10 +108,10 @@ public:
                 int top = q.front();
                 q.pop();
                 for( auto &adj : graph[top] ){
-                    if(distance[adj[0]] > adj[1] + distance[top] ){
-                        distance[adj[0]] = adj[1] + distance[top];
-                        if( distance[adj[0]] >= distance[dst] )
-                            q.push(adj[0]);
+                    if(distance[adj.first] > adj.second + distance[top] ){
+                        distance[adj.first] = adj.second + distance[top];
+                        if( distance[adj.first] >= distance[dst] )
+                            q.push(adj.first);
                     }
                 }
             }
