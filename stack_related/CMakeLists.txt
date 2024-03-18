@@ -1,0 +1,2 @@
+add_executable(lisp_parser lisp_parser.cpp)
+add_executable(expression_eval expression_eval.cpp)

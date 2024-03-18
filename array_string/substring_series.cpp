@@ -77,6 +77,74 @@ int findLongestSubstring( string s ){
     return res;
 }
 
+/**
+ * 给定一个字符串pattern和一个字符串value，判断value是否符合pattern
+ * 求解二元一次方程 lenA * numA + lenB * numB = m 其中m为value的长度, numA和numB为pattern中'a'和'b'的个数， 求解lenA和lenB
+ * @param pattern 只由'a'和'b'组成
+ * @param value
+ * @return
+ */
+
+bool matchSinglePatternAlpha(size_t len, string& value){
+    if (len == 0 || value.size() % len != 0)
+        return false;
+    string sub = value.substr(0, len);
+    for( size_t i = len; i < value.size(); i += len ){
+        if( value.substr(i, len) != sub )
+            return false;
+    }
+    return true;
+}
+bool matchBiPatternAlpha(int num_a, int num_b, string& pattern, string& value){
+    size_t m = value.size();
+    for (int len_a = 0; len_a * num_a <= m; len_a++) {
+        if ((m - len_a * num_a) % num_b != 0)
+            continue;
+        size_t len_b = (m - len_a * num_a) / num_b;
+        size_t i = 0;
+        string sub_a, sub_b;
+        for (char c: pattern) {
+            if (c == 'a') {
+                if (sub_a.empty())
+                    sub_a = value.substr(i, len_a);
+                else if (value.substr(i, len_a) != sub_a)
+                    break;
+                i += len_a;
+            } else {
+                if (sub_b.empty())
+                    sub_b = value.substr(i, len_b);
+                else if (value.substr(i, len_b) != sub_b)
+                    break;
+                i += len_b;
+            }
+        }
+        if (i == m && sub_a != sub_b)
+            return true;
+    }
+    return false;
+}
+bool patternMatch(string pattern, string value){
+    size_t m = value.size();
+    int a = 0, b = 0;
+    for( char c : pattern ){
+        if( c == 'a' )
+            a++;
+        else
+            b++;
+    }
+    if( a == 0 && b == 0 )
+        return m == 0;
+    if ( m == 0 )
+        return a == 0 || b == 0;
+    if (a == 0){
+        return pattern[0] == 'b' && matchSinglePatternAlpha(m / b, value);
+    }else if (b == 0){
+        return pattern[0] == 'a' && matchSinglePatternAlpha(m / a, value);
+    } else {
+        return matchBiPatternAlpha(a, b, pattern, value);
+    }
+}
+
 int main(){
     string s;
     while ( cin>> s ){

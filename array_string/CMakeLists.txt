@@ -1,0 +1,4 @@
+
+add_executable(substring_search substring_series.cpp)
+add_executable(circular_array circular_array_loop.cpp)
+add_executable(subarray_search subarray_search.cpp)

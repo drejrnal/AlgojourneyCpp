@@ -65,6 +65,35 @@ public:
         return totalCnt;
     }
 
+    void mergeSort( vector<int> &nums, int left, int right ) {
+        if (left == right)
+            return;
+        int mid = left + (right - left) / 2;
+        mergeSort(nums, left, mid);
+        mergeSort(nums, mid + 1, right);
+        merge(nums, left, mid, right);
+    }
+    //now use external sort to implement merge function
+    void merge( vector<int> &nums, int left, int mid, int right ) {
+        vector<int> tmpArr(right - left + 1);
+        int left_ptr = left, right_ptr = mid + 1;
+        int tmp_i = 0;
+        while (left_ptr <= mid && right_ptr <= right) {
+            if (nums[left_ptr] < nums[right_ptr]) {
+                tmpArr[tmp_i++] = nums[left_ptr++];
+            } else {
+                tmpArr[tmp_i++] = nums[right_ptr++];
+            }
+        }
+        while (left_ptr <= mid)
+            tmpArr[tmp_i++] = nums[left_ptr++];
+        while (right_ptr <= right)
+            tmpArr[tmp_i++] = nums[right_ptr++];
+        for (int i = 0; i <= right - left; i++) {
+            nums[left + i] = tmpArr[i];
+        }
+    }
+
 };
 
 int main(){

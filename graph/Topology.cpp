@@ -4,6 +4,9 @@
 
 #include "common.h"
 
+/**
+ * TODO leetcode 2360题目 https://leetcode.cn/problems/longest-cycle-in-a-graph/description/
+ */
 class Topology {
 
     bool cycle = false;
