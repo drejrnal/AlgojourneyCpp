@@ -53,7 +53,7 @@ int calculate_parenthesis_expression(string &s) {
 int calculate_string(string &s) {
     unsigned int num = 0;
     deque<char> oprand;
-    deque<unsigned int > op_value;
+    deque<unsigned int> op_value;
     for (int i = 0; i < s.size(); i++) {
         if (isdigit(s[i])) {
             num = (num * 10 + s[i] - '0');
@@ -71,12 +71,12 @@ int calculate_string(string &s) {
                     j++;
                 } else if (isblank(s[j])) {
                     j++;
-                } else{
+                } else {
                     break;
                 }
             }
             num = (opt == '*') ? (num * front_num) : (num / front_num);
-            i = j -1;
+            i = j - 1;
         } else if (isblank(s[i])) {
             continue;
         }
@@ -93,6 +93,59 @@ int calculate_string(string &s) {
     return result;
 }
 
+string compress(string str, int &begin);
+
+/**
+ * when begin point to a '[', eval the string in the bracket
+ * @param str
+ * @param begin
+ * @return
+ */
+string eval_bracket(const string &str, int &begin) {
+    string eval = "";
+    //先获取num
+    begin++; //skip '['
+    int temp_ptr = begin;
+    while (str[temp_ptr] <= '9' && str[temp_ptr] >= '0')
+        temp_ptr++;
+    int freq = stoi(str.substr(begin, temp_ptr - begin));
+    begin = temp_ptr + 1; //skip '|'
+    string sub = compress(str, begin);
+    for (int i = 0; i < freq; i++)
+        eval += sub;
+    begin++; //skip ']'
+    return eval;
+}
+
+string compress(const string str, int &trav) {
+    // write code here
+    int n = str.length();
+    string res = "";
+    while (trav < n) {
+        if (str[trav] == '[') {
+            string bracket = eval_bracket(str, trav);
+            res += bracket;
+        } else if (str[trav] == ']') {
+            break;
+        } else {
+            //此时，遍历到的一定是字符,将此字符所在位置到下一个'['之间的子串添加到res中。
+            int temp_ptr = trav;
+            while (isalpha(str[temp_ptr])) {
+                temp_ptr++;
+            }
+            string partial(str.substr(trav, temp_ptr - trav));
+            trav = temp_ptr;
+            res += partial;
+        }
+    }
+    return res;
+}
+
+string compress(string &str) {
+    int trav = 0;
+    return compress(str, trav);
+}
+
 /**
  * caluculate string expression which contain number and operator +, -, *, / no parenthesis
  * use stack to implement this, not deque. note that +, - is left associative how to do this using stack
@@ -100,9 +153,12 @@ int calculate_string(string &s) {
  */
 
 int main() {
-    string expression;
-    getline(cin, expression);
+    //string expression;
+    //getline(cin, expression);
     //cout<<calculate_parenthesis_expression(expression)<<endl;
-    cout << calculate_string(expression) << endl;
+    //cout << calculate_string(expression) << endl;
+    string compressive = "[3|ab]";
+    string res = compress(compressive);
+    cout << res << endl;
     return 0;
 }

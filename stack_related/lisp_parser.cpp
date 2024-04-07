@@ -1,6 +1,7 @@
 //
 // Created by luoxiYun on 2024/3/15.
 //
+#include <iostream>
 #include <string>
 #include <deque>
 #include <list>
@@ -32,6 +33,12 @@ class LispParser {
         Token peek() {
             return token_stream.front();
         }
+
+        // look 1 element ahead
+        Token peek_next() {
+            return token_stream[1];
+        }
+
         Token get() {
             Token t = token_stream.front();
             token_stream.pop_front();
@@ -46,7 +53,12 @@ class LispParser {
         std::deque<std::unordered_map<std::string, int>> context;
 
         void addFrame(){
-            context.emplace_front();
+            if (context.empty()) {
+                context.emplace_front();
+            } else {
+                auto last_stack = context.front();
+                context.emplace_front(last_stack);
+            }
         }
 
         void popFrame(){
@@ -64,7 +76,7 @@ class LispParser {
     };
 
     //given an expression like (let x 2 (mult x (let x 3 y 4 (add x y)))), please parse this expression into token list
-    std::list<Token> &tokenizer(std::string &expression) {
+    std::list<Token> tokenizer(const std::string &expression) {
         std::list<Token> tokens;
         for (int i = 0; i < expression.size(); i++) {
             if (expression[i] == '(') {
@@ -86,27 +98,26 @@ class LispParser {
                 } else {
                     tokens.push_back({TokenType::VAR, var});
                 }
-            } else if(isdigit(expression[i])){
+                i = j - 1;
+            } else if (expression[i] == '-' || isdigit(expression[i])) {
                 int j = i + 1;
                 while (isdigit(expression[j])){
                     j++;
                 }
                 tokens.push_back({TokenType::NUMBER, expression.substr(i, j-i)});
-            } else {
-                i++;
+                i = j - 1;
             }
         }
         return tokens;
     }
 
     auto eval_let(TokenStream &ts, ExpressionContext &context){
-        ts.get();
-        ts.get();
+        ts.get(); //parse 'let'
         int res = -1;
         context.addFrame();
         while (true){
             auto t1 = ts.peek();
-            auto t2 = ts.peek();
+            auto t2 = ts.peek_next();
             if (t1.type == TokenType::VAR &&t2.type != TokenType::RIGHT_PARENTHESIS){
                 auto var = ts.get();
                 auto value = evaluate_expr(ts, context);
@@ -121,22 +132,24 @@ class LispParser {
         return res;
     }
 
-    int evaluate_expr(TokenStream &ts, ExpressionContext &context){
+    int evaluate_expr(TokenStream &ts, ExpressionContext &context) {
         auto t1 = ts.peek();
-        if (t1.type == TokenType::LEFT_PARENTHESIS){
+        if (t1.type == TokenType::LEFT_PARENTHESIS) {
+            ts.get(); //parse '('
             auto t2 = ts.peek();
-            if (t2.type == TokenType::LET){
+            if (t2.type == TokenType::LET) {
                 return eval_let(ts, context);
-            } else if (t2.type == TokenType::ADD){
+            } else if (t2.type == TokenType::ADD) {
                 return eval_add(ts, context);
-            } else if (t2.type == TokenType::MULT){
+            } else if (t2.type == TokenType::MULT) {
                 return eval_mult(ts, context);
             }
-        } else if (t1.type == TokenType::VAR){
+        } else if (t1.type == TokenType::VAR) {
             return eval_var(ts, context);
-        } else if (t1.type == TokenType::NUMBER){
+        } else if (t1.type == TokenType::NUMBER) {
             return eval_number(ts);
         }
+        //TODO 其余情况抛出异常
     }
 
     int eval_mult(TokenStream &ts, ExpressionContext &context){
@@ -165,12 +178,20 @@ class LispParser {
     }
 
     //调用入口
+public:
     auto evaluate(std::string &expression){
         auto tokens = tokenizer(expression);
         TokenStream ts(tokens);
         ExpressionContext context;
-        context.addFrame();
+        //context.addFrame();
         return evaluate_expr(ts, context);
     }
 
 };
+
+int main() {
+    std::string expression = "(let var 78 b 77 (let c 33 (add c (mult var 66))))";
+    LispParser lp;
+    std::cout << lp.evaluate(expression) << std::endl;
+    return 0;
+}

@@ -18,7 +18,7 @@ add_library(ds_template
 add_subdirectory(backtracking/)
 add_subdirectory(array_string/)
 #add_subdirectory(binary_tree/)
-add_subdirectory(dp/)
+#add_subdirectory(dp/)
 add_subdirectory(sort_greedy/)
 add_subdirectory(stack_related)
 #add_subdirectory(graph/)
