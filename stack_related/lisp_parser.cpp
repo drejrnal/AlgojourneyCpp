@@ -183,7 +183,6 @@ public:
         auto tokens = tokenizer(expression);
         TokenStream ts(tokens);
         ExpressionContext context;
-        //context.addFrame();
         return evaluate_expr(ts, context);
     }
 
