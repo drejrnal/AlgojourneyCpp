@@ -8,6 +8,7 @@
  */
 
 #include "common.h"
+#include <cassert>
 
 class biSearchInArray {
 
