@@ -9,34 +9,34 @@
  */
 class stackPopSequence {
 private:
-    set<string> results;
+    set<vector<int>> results;
 public:
-    void enumerate_sequences(vector<int> &origin, stack<int> &st, string &on_fly, int i, int stack_index) {
-        if (i == origin.size() && stack_index == origin.size()) {
+    void enumerate_sequences(vector<int> &origin, stack<int> &st, vector<int> &on_fly, int stack_index) {
+        if (on_fly.size() == origin.size() && stack_index == origin.size()) {
             results.insert(on_fly);
             return;
         }
         //递归第一种情况：当前stack_index位置的元素进栈
         if (stack_index < origin.size()) {
             st.push(origin[stack_index]);
-            enumerate_sequences(origin, st, on_fly, i, stack_index + 1);
+            enumerate_sequences(origin, st, on_fly, stack_index + 1);
             st.pop();
         }
         //递归第二种情况：当前stack_index位置元素暂不进栈，从栈顶取一元素后，在递归到第一种情况
         if (!st.empty()) {
             int top = st.top();
             st.pop();
-            on_fly += (top + '0');
-            enumerate_sequences(origin, st, on_fly, i + 1, stack_index);
-            st.push(top);
+            on_fly.push_back(top);
+            enumerate_sequences(origin, st, on_fly, stack_index);
             on_fly.pop_back();
+            st.push(top);
         }
         return;
     }
     /*
      * getter method
      */
-    set<string> getEnumSequence(){
+    set<vector<int>> getEnumSequence() {
         return results;
     }
 };
@@ -49,22 +49,16 @@ int main(){
     for( int i = 0; i < size; i++ )
         cin>>origins[i];
     stack<int> st;
-    string fly;
+    vector<int> fly;
     stackPopSequence pop;
-    pop.enumerate_sequences( origins, st, fly, 0, 0 );
-    set<string> results = pop.getEnumSequence();
+    pop.enumerate_sequences(origins, st, fly, 0);
+    set<vector<int>> results = pop.getEnumSequence();
     vector<vector<int>> output(results.size());
-    int cnt = 0;
-    for( const string& ele : results ){
-        for( char c : ele ){
-            output[cnt].push_back( c - '0' );
+    for (const vector<int> &seq: results) {
+        for (int num: seq) {
+            cout << num << " ";
         }
-        cnt++;
-    }
-    for( auto &arr : output ){
-        for( int seq : arr )
-            cout<<seq<<" ";
-        cout<<endl;
+        cout << endl;
     }
     return 0;
 }

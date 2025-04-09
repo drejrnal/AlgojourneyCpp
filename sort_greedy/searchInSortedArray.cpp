@@ -8,6 +8,7 @@
  */
 
 #include "common.h"
+#include <cassert>
 
 class biSearchInArray {
 
@@ -156,6 +157,8 @@ int main() {
                         -20, -20, -19, -18, -12, -11, -7, -7, -7, -7, -6, -4, -2};
     int target = -7;
     biSearchInArray biSearch;
+    std:
+    cout << biSearch.searchLowestInRotatedArray(nums, target) << std::endl;
     assert(biSearch.searchInArrayLeftBound(nums, target) == biSearchInArray::searchInRotatedArrayLeftBound(nums, target));
     return 0;
 }
