@@ -1,2 +1,4 @@
 add_executable(lisp_parser lisp_parser.cpp)
 add_executable(expression_eval expression_eval.cpp)
+add_executable(monotonous_stack monotonous_stack.cpp)
+add_executable(stack_pop_sequence stack_pop_sequence.cpp)
