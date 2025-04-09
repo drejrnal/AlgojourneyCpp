@@ -6,11 +6,11 @@
 
 /**
  * calculate string representative expression
- * the expression will contain parenthesis
+ * the expression will contain parenthesis, and the operators +. -
  * @param s
  * @return
  */
-int calculate_parenthesis_expression(string &s) {
+int evaluate_addsub_with_parentheses(string &s) {
     int num = 0, prev_res = 0, pos = 0;
     int opt = 1;
     int N = s.length();
@@ -48,9 +48,11 @@ int calculate_parenthesis_expression(string &s) {
 }
 
 /**
+ * 计算字符串表达式
+ * 该表达式不包含括号,只包含运算符
  * @return
  */
-int calculate_string(string &s) {
+int evaluate_expression_without_parenthesis(string &s) {
     unsigned int num = 0;
     deque<char> oprand;
     deque<unsigned int> op_value;
@@ -147,18 +149,92 @@ string compress(string &str) {
 }
 
 /**
- * caluculate string expression which contain number and operator +, -, *, / no parenthesis
- * use stack to implement this, not deque. note that +, - is left associative how to do this using stack
- * @return
+ * Calculate arithmetic expression with proper operator precedence
+ * Handles +, -, *, / and parentheses with correct order of operations
+ * @param s input expression string
+ * @return calculated result
  */
+int calculate_full_expression(string &s) {
+    stack<int> values;
+    stack<char> ops;
+    
+    for (int i = 0; i < s.length(); i++) {
+        // Skip whitespace
+        if (isspace(s[i])) continue;
+        
+        // If current character is a digit, parse the full number
+        if (isdigit(s[i])) {
+            int num = 0;
+            while (i < s.length() && isdigit(s[i])) {
+                num = num * 10 + (s[i] - '0');
+                i++;
+            }
+            i--; // Go back one character as the loop will increment
+            values.push(num);
+        }
+        // If current character is an opening bracket, push to ops stack
+        else if (s[i] == '(') {
+            ops.push(s[i]);
+        }
+        // If current character is a closing bracket, solve the bracket expression
+        else if (s[i] == ')') {
+            // Solve until matching opening bracket
+            while (!ops.empty() && ops.top() != '(') {
+                int val2 = values.top(); values.pop();
+                int val1 = values.top(); values.pop();
+                char op = ops.top(); ops.pop();
+                
+                if (op == '+') values.push(val1 + val2);
+                else if (op == '-') values.push(val1 - val2);
+                else if (op == '*') values.push(val1 * val2);
+                else if (op == '/') values.push(val1 / val2);
+            }
+            // Remove the opening bracket
+            if (!ops.empty()) ops.pop();
+        }
+        // If current character is an operator
+        else if (s[i] == '+' || s[i] == '-' || s[i] == '*' || s[i] == '/') {
+            // While top of ops has higher or same precedence and it's not an opening bracket
+            while (!ops.empty() && ops.top() != '(' && 
+                   ((s[i] == '+' || s[i] == '-') || 
+                    (ops.top() == '*' || ops.top() == '/'))) {
+                int val2 = values.top(); values.pop();
+                int val1 = values.top(); values.pop();
+                char op = ops.top(); ops.pop();
+                
+                if (op == '+') values.push(val1 + val2);
+                else if (op == '-') values.push(val1 - val2);
+                else if (op == '*') values.push(val1 * val2);
+                else if (op == '/') values.push(val1 / val2);
+            }
+            ops.push(s[i]);
+        }
+    }
+    
+    // Process any remaining operators
+    while (!ops.empty()) {
+        int val2 = values.top(); values.pop();
+        int val1 = values.top(); values.pop();
+        char op = ops.top(); ops.pop();
+        
+        if (op == '+') values.push(val1 + val2);
+        else if (op == '-') values.push(val1 - val2);
+        else if (op == '*') values.push(val1 * val2);
+        else if (op == '/') values.push(val1 / val2);
+    }
+    
+    // Final result is the top of values stack
+    return values.top();
+}
 
 int main() {
-    //string expression;
-    //getline(cin, expression);
-    //cout<<calculate_parenthesis_expression(expression)<<endl;
-    //cout << calculate_string(expression) << endl;
-    string compressive = "[3|ab]";
-    string res = compress(compressive);
-    cout << res << endl;
+    string expression;
+    getline(cin, expression);
+    cout<<evaluate_addsub_with_parentheses(expression)<<endl;
+    cout<<evaluate_expression_without_parenthesis(expression)<<endl;
+    cout<<"With operator precedence: "<<calculate_full_expression(expression)<<endl;
+//    string compressive = "[3|ab]";
+//    string res = compress(compressive);
+//    cout << res << endl;
     return 0;
 }

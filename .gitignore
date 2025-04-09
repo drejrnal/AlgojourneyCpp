@@ -7,6 +7,7 @@
 *.lo
 *.o
 *.obj
+.idea/
 cmake-build-debug/
 build/
 

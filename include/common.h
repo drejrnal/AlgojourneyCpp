@@ -22,6 +22,8 @@
 #include <sstream>
 
 #include <cmath>
+#include <cstring>
+#include <stdlib.h>
 using namespace std;
 
 
