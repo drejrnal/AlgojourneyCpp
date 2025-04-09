@@ -49,7 +49,7 @@ int evaluate_addsub_with_parentheses(string &s) {
 
 /**
  * 计算字符串表达式
- * 该表达式不包含括号,只包含运算符
+ * 该表达式不包含括号,只包含运算符+, -, *, /
  * @return
  */
 int evaluate_expression_without_parenthesis(string &s) {
