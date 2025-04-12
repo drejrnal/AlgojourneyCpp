@@ -134,15 +134,15 @@ make
 项目中的代码可以作为算法学习的参考：
 
 ```cpp
-#include "include/common.h"
-#include "include/indexed_priority_queue.h"
+#include "common.h"
+#include "indexed_priority_queue.h"
 
 // 索引优先队列使用示例
 int main() {
     indexed_priority_queue<string, int> ipq;
-    ipq.push("任务1", 5);
-    ipq.push("任务2", 3);
-    ipq.changeKey("任务1", 2);  // 更新优先级
+    ipq.push("task1", 5);
+    ipq.push("task2", 3);
+    ipq.changeKey("task1", 2);  // 更新优先级
 
     while (!ipq.empty()) {
         auto [key, value] = ipq.top();
