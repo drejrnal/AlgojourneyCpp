@@ -12,9 +12,9 @@ public:
     // Quicksort implementation
     void quickSort(vector<int> &nums, int l, int r) {
         if (l < r) {
-            int pivotIndex = randomPartition(nums, l, r);
-            quickSort(nums, l, pivotIndex - 1);
-            quickSort(nums, pivotIndex + 1, r);
+            pair<int, int> pivotRange = randomRangePartition(nums, l, r);
+            quickSort(nums, l, pivotRange.first - 1);
+            quickSort(nums, pivotRange.second + 1, r);
         }
     }
 
@@ -33,6 +33,12 @@ public:
         return partition(nums, l, r);
     }
 
+    pair<int, int> randomRangePartition(vector<int> &nums, int l, int r) {
+        int pos = rand() % (r - l + 1) + l;
+        std::swap(nums[pos], nums[r]);
+        return partitionRange(nums, l, r);
+    }
+
     int partition(vector<int> &nums, int l, int r) {
         int left = l - 1;
         int pivot = nums[r];
@@ -44,6 +50,24 @@ public:
         std::swap(nums[left + 1], nums[r]);
         // nums[l...left+1] <= x < nums[left+2...r]
         return left + 1;
+    }
+
+    //返回两个值，第一个是小于pivot的最大元素下标，第二个是大于pivot的最小元素下标
+    pair<int, int> partitionRange(vector<int> &nums, int l, int r) {
+        int left = l, right = r - 1;
+        int pivot = nums[r];
+        int traverse = l;
+        while (traverse <= right) {
+            if (nums[traverse] < pivot) {
+                std::swap(nums[left++], nums[traverse++]);
+            } else if (nums[traverse] == pivot) {
+                traverse++;
+            } else {
+                std::swap(nums[right--], nums[traverse]);
+            }
+        }
+        std::swap(nums[traverse], nums[r]);
+        return {left, traverse};
     }
 
     int quickSelect(vector<int> &nums, int l, int r, int k) {

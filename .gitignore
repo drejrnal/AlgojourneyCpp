@@ -8,6 +8,7 @@
 *.o
 *.obj
 .idea/
+.vscode/
 cmake-build-debug/
 build/
 
