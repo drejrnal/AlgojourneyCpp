@@ -18,12 +18,13 @@ add_library(ds_template
 add_subdirectory(common_algo/)
 add_subdirectory(backtracking/)
 add_subdirectory(array_string/)
-#add_subdirectory(binary_tree/)
+add_subdirectory(binary_tree/)
 #add_subdirectory(dp/)
 add_subdirectory(sort_greedy/)
 add_subdirectory(stack_related)
+add_subdirectory(interview/)
 add_subdirectory(test/)
-#add_subdirectory(graph/)
+add_subdirectory(graph/)
 # as we have had these subdirectories, then how to configure cmake file in each of them?
 # i want to add all the cpp files in each directory, and build them all
 #target_link_libraries(walking_leetcode ds_template)

@@ -7,15 +7,15 @@ message(STATUS "GRAPH SOURCES:${GRAPH_SOURCES}")
 message(STATUS ${CURRENT_SRC_DIR})
 message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND GRAPH_SOURCES
+        ${CURRENT_SRC_DIR}/grid_dfs.cpp
         ${CURRENT_SRC_DIR}/shortest_path.cpp
         ${CURRENT_SRC_DIR}/traffic_route.cpp
         ${CURRENT_SRC_DIR}/word_ladder.cpp
-        ${CURRENT_SRC_DIR}/tarjan.cpp
+        #${CURRENT_SRC_DIR}/tarjan.cpp
         ${CURRENT_SRC_DIR}/topology.cpp
         ${CURRENT_SRC_DIR}/redundant_connection.cpp
 )
 foreach (GRAPH_SOURCE ${GRAPH_SOURCES})
     get_filename_component(GRAPH_SOURCE_NAME ${GRAPH_SOURCE} NAME_WE)
     add_executable(${GRAPH_SOURCE_NAME} ${GRAPH_SOURCE})
-    target_link_libraries(${GRAPH_SOURCE_NAME} ds_template)
 endforeach ()
