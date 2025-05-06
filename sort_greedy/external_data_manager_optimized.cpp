@@ -27,6 +27,18 @@ private:
     string base_filename;
     size_t total_elements;
 
+    /*
+     * Helper function to align an offset to the system page size
+     * In mmap function, the offset must be aligned to the page size
+     * otherwise it will return EINVAL error number
+     */
+    size_t alignToPageSize(size_t offset) {
+        static const size_t pageSize = sysconf(_SC_PAGESIZE);
+        // Use bit masking to align down to page boundary
+        // Equivalent to: offset - (offset % pageSize)
+        return offset & ~(pageSize - 1);
+    }
+
     // Sort directly in the memory-mapped region
     void sortMappedChunk(void *mapped_data, size_t num_elements) {
         long long *data = static_cast<long long *>(mapped_data);
@@ -75,12 +87,24 @@ private:
             return {MAP_FAILED, -1};
         }
 
-        void *mapped = mmap(NULL, bytes_to_map, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, offset);
+        // Align offset to page size boundary to prevent EINVAL from mmap
+        size_t aligned_offset = alignToPageSize(offset);
+        // Adjust the mapping size to account for the alignment shift
+        size_t offset_adjustment = offset - aligned_offset;
+        size_t aligned_bytes_to_map = bytes_to_map + offset_adjustment;
+
+        void *mapped = mmap(NULL, aligned_bytes_to_map, PROT_READ | PROT_WRITE,
+                            MAP_SHARED, fd, aligned_offset);
         if (mapped == MAP_FAILED) {
-            cerr << "Failed to map file for reading/writing" << endl;
+            cerr << "Failed to map file for reading/writing: " << strerror(errno) << endl;
             close(fd);
             return {MAP_FAILED, -1};
+        }
+
+        // If we adjusted the offset, we need to adjust the returned pointer
+        if (offset_adjustment > 0) {
+            char* base_ptr = static_cast<char*>(mapped);
+            return {base_ptr + offset_adjustment, fd};
         }
 
         return {mapped, fd};
@@ -89,9 +113,24 @@ private:
     // Unmap a previously mapped region
     void unmapChunk(void *mapped, size_t length, int fd) {
         if (mapped != MAP_FAILED) {
+            // Get page-aligned base address for unmapping
+            static const size_t pageSize = sysconf(_SC_PAGESIZE);
+            uintptr_t addr = reinterpret_cast<uintptr_t>(mapped);
+            size_t misalignment = addr & (pageSize - 1);
+            
+            // If the pointer is misaligned, adjust it back to page boundary
+            void *aligned_addr = mapped;
+            size_t actual_length = length;
+
+            if (misalignment > 0) {
+                // Adjust pointer back to page boundary and increase length
+                aligned_addr = reinterpret_cast<void*>(addr - misalignment);
+                actual_length = length + misalignment;
+            }
+            
             // Ensure data is synchronized with disk
-            msync(mapped, length, MS_SYNC);
-            munmap(mapped, length);
+            msync(aligned_addr, actual_length, MS_SYNC);
+            munmap(aligned_addr, actual_length);
         }
         if (fd != -1) {
             close(fd);
@@ -135,20 +174,30 @@ private:
 
         // Map the relevant portion of the input file
         size_t input_offset = start_element * DATA_TYPE_SIZE;
-        void *input_mapped = mmap(NULL, temp_file_size, PROT_READ, MAP_PRIVATE,
-                                  input_fd, input_offset);
+        
+        // Align offset to page size boundary
+        size_t aligned_input_offset = alignToPageSize(input_offset);
+        size_t offset_adjustment = input_offset - aligned_input_offset;
+        size_t aligned_size = temp_file_size + offset_adjustment;
+        
+        void *input_mapped = mmap(NULL, aligned_size, PROT_READ, MAP_PRIVATE,
+                                  input_fd, aligned_input_offset);
         if (input_mapped == MAP_FAILED) {
-            cerr << "Failed to map input file" << endl;
+            cerr << "Failed to map input file: " << strerror(errno) << endl;
             close(input_fd);
             unmapChunk(temp_mapped, temp_file_size, temp_fd);
             return;
         }
 
+        // Adjust the pointer to account for alignment
+        char* aligned_ptr = static_cast<char*>(input_mapped);
+        void* actual_start = aligned_ptr + offset_adjustment;
+        
         // Copy data from input to temp file
-        memcpy(temp_mapped, input_mapped, temp_file_size);
+        memcpy(temp_mapped, actual_start, temp_file_size);
 
         // Unmap input file
-        munmap(input_mapped, temp_file_size);
+        munmap(input_mapped, aligned_size);
         close(input_fd);
 
         // Sort the data directly in the memory-mapped temp file
@@ -177,7 +226,6 @@ private:
         // Open all temp files with memory mapping
         vector<pair<void *, int>> mapped_files;
         vector<size_t> file_sizes;
-        vector<size_t> current_positions;
 
         for (const auto &file: temp_files) {
             int fd = open(file.c_str(), O_RDONLY);
@@ -193,17 +241,17 @@ private:
                 continue;
             }
 
-            void *mapped =
-                    mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            // Use page-aligned memory mapping
+            size_t filesize = sb.st_size;
+            void *mapped = mmap(NULL, filesize, PROT_READ, MAP_PRIVATE, fd, 0);
             if (mapped == MAP_FAILED) {
-                cerr << "Failed to map temp file: " << file << endl;
+                cerr << "Failed to map temp file: " << file << ": " << strerror(errno) << endl;
                 close(fd);
                 continue;
             }
 
             mapped_files.push_back({mapped, fd});
-            file_sizes.push_back(sb.st_size / DATA_TYPE_SIZE);
-            current_positions.push_back(0);
+            file_sizes.push_back(filesize / DATA_TYPE_SIZE);
         }
 
         // Create and map output file
@@ -226,7 +274,7 @@ private:
                     close(fd);
                 }
             }
-            return;
+            exit(-1);
         }
 
         // Set output file size
@@ -244,13 +292,13 @@ private:
                     close(fd);
                 }
             }
-            return;
+            exit(-1);
         }
 
         // Map the output file in chunks to avoid mapping the entire large file
         // at once
         const size_t OUTPUT_CHUNK_SIZE =
-                10000 * DATA_TYPE_SIZE;  // Bytes to map at once
+                4096 * 50 * DATA_TYPE_SIZE;  // Bytes to map at once
         size_t current_output_offset = 0;
         size_t remaining_output_size = output_file_size;
 
@@ -268,12 +316,18 @@ private:
         while (!pq.empty() && remaining_output_size > 0) {
             // Map the next chunk of the output file
             size_t chunk_size = min(OUTPUT_CHUNK_SIZE, remaining_output_size);
+            
+            // Align the output offset to page boundary
+            size_t aligned_offset = alignToPageSize(current_output_offset);
+            size_t offset_adjustment = current_output_offset - aligned_offset;
+            size_t aligned_chunk_size = chunk_size + offset_adjustment;
 
-            void *output_mapped = mmap(NULL, chunk_size, PROT_WRITE, MAP_SHARED,
-                                       output_fd, current_output_offset);
+            void *output_mapped = mmap(NULL, aligned_chunk_size, PROT_WRITE, MAP_SHARED,
+                                     output_fd, aligned_offset);
             if (output_mapped == MAP_FAILED) {
                 cerr << "Failed to map output file at offset "
-                     << current_output_offset << endl;
+                     << current_output_offset <<" due to "<<strerror(errno)<< endl;
+
                 close(output_fd);
                 // Clean up mapped files
                 for (int i = 0; i < mapped_files.size(); i++) {
@@ -285,10 +339,13 @@ private:
                         close(fd);
                     }
                 }
-                return;
+                exit(-1);
             }
 
-            long long *output_data = static_cast<long long *>(output_mapped);
+            // Adjust the pointer for the actual output position
+            char* aligned_ptr = static_cast<char*>(output_mapped);
+            long long *output_data = reinterpret_cast<long long *>(aligned_ptr + offset_adjustment);
+            
             size_t output_elements_written = 0;
             size_t max_elements_in_chunk = chunk_size / DATA_TYPE_SIZE;
 
@@ -311,8 +368,8 @@ private:
             }
 
             // Synchronize and unmap the output chunk
-            msync(output_mapped, chunk_size, MS_SYNC);
-            munmap(output_mapped, chunk_size);
+            msync(output_mapped, aligned_chunk_size, MS_SYNC);
+            munmap(output_mapped, aligned_chunk_size);
 
             // Update offsets and remaining size
             current_output_offset += output_elements_written * DATA_TYPE_SIZE;
@@ -361,7 +418,7 @@ public:
         // Use chunked memory mapping for very large files
         random_device rd;
         mt19937_64 gen(rd());
-        uniform_int_distribution<long long> dist(LLONG_MIN, LLONG_MAX);
+        uniform_int_distribution<long long> dist(0, 6666666);
 
         for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
             size_t current_chunk_size = min(CHUNK_SIZE, total_size - offset);
@@ -491,7 +548,8 @@ public:
         auto [mapped, fd] =
                 mapChunkForReadWrite(data_file, offset, num_elements);
         if (mapped == MAP_FAILED) {
-            return false;
+
+            exit(-1);
         }
 
         // Sort the mapped region in-place
@@ -511,7 +569,8 @@ public:
         auto [mapped, fd] =
                 mapChunkForReadWrite(sorted_file, start * DATA_TYPE_SIZE, count);
         if (mapped == MAP_FAILED) {
-            return {};
+            cerr << "Failed to map file for reading" << " due to "<<strerror(errno)<<endl;
+            exit(-1);
         }
 
         // Copy data to vector for return

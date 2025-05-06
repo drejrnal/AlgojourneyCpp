@@ -12,7 +12,7 @@ list(APPEND GRAPH_SOURCES
         ${CURRENT_SRC_DIR}/traffic_route.cpp
         ${CURRENT_SRC_DIR}/word_ladder.cpp
         #${CURRENT_SRC_DIR}/tarjan.cpp
-        ${CURRENT_SRC_DIR}/topology.cpp
+        ${CURRENT_SRC_DIR}/Topology.cpp
         ${CURRENT_SRC_DIR}/redundant_connection.cpp
 )
 foreach (GRAPH_SOURCE ${GRAPH_SOURCES})
