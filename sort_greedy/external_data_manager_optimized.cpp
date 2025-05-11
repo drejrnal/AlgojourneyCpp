@@ -26,6 +26,7 @@ private:
     const size_t RECORDS_PER_CHUNK = CHUNK_SIZE / DATA_TYPE_SIZE;
     string base_filename;
     size_t total_elements;
+    void *global_sorted_mapped;
 
     /*
      * Helper function to align an offset to the system page size
@@ -43,71 +44,6 @@ private:
     void sortMappedChunk(void *mapped_data, size_t num_elements) {
         long long *data = static_cast<long long *>(mapped_data);
         std::sort(data, data + num_elements);
-    }
-
-    // Map a chunk of file for reading and writing
-    // Returns: pair containing mapped pointer and file descriptor (for later
-    // cleanup)
-    pair<void *, int> mapChunkForReadWrite(const string &filename, size_t offset,
-                                           size_t length,
-                                           bool extend_if_needed = false) {
-        int fd = open(filename.c_str(), O_RDWR);
-        if (fd == -1) {
-            cerr << "Failed to open file for mapping: " << filename << endl;
-            return {MAP_FAILED, -1};
-        }
-
-        struct stat sb;
-        if (fstat(fd, &sb) == -1) {
-            cerr << "Failed to get file size" << endl;
-            close(fd);
-            return {MAP_FAILED, -1};
-        }
-
-        size_t filesize = sb.st_size;
-        size_t bytes_needed = offset + length * DATA_TYPE_SIZE;
-
-        // Extend file if needed and requested
-        if (extend_if_needed && bytes_needed > filesize) {
-            if (ftruncate(fd, bytes_needed) == -1) {
-                cerr << "Failed to extend file to " << bytes_needed << " bytes"
-                     << endl;
-                close(fd);
-                return {MAP_FAILED, -1};
-            }
-            filesize = bytes_needed;
-        }
-
-        // Adjust bytes to map based on actual file size
-        size_t bytes_to_map = min(length * DATA_TYPE_SIZE, filesize - offset);
-        if (bytes_to_map == 0) {
-            cerr << "Zero bytes to map, offset may be beyond end of file"
-                 << endl;
-            close(fd);
-            return {MAP_FAILED, -1};
-        }
-
-        // Align offset to page size boundary to prevent EINVAL from mmap
-        size_t aligned_offset = alignToPageSize(offset);
-        // Adjust the mapping size to account for the alignment shift
-        size_t offset_adjustment = offset - aligned_offset;
-        size_t aligned_bytes_to_map = bytes_to_map + offset_adjustment;
-
-        void *mapped = mmap(NULL, aligned_bytes_to_map, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, aligned_offset);
-        if (mapped == MAP_FAILED) {
-            cerr << "Failed to map file for reading/writing: " << strerror(errno) << endl;
-            close(fd);
-            return {MAP_FAILED, -1};
-        }
-
-        // If we adjusted the offset, we need to adjust the returned pointer
-        if (offset_adjustment > 0) {
-            char* base_ptr = static_cast<char*>(mapped);
-            return {base_ptr + offset_adjustment, fd};
-        }
-
-        return {mapped, fd};
     }
 
     // Unmap a previously mapped region
@@ -295,13 +231,6 @@ private:
             exit(-1);
         }
 
-        // Map the output file in chunks to avoid mapping the entire large file
-        // at once
-        const size_t OUTPUT_CHUNK_SIZE =
-                4096 * 50 * DATA_TYPE_SIZE;  // Bytes to map at once
-        size_t current_output_offset = 0;
-        size_t remaining_output_size = output_file_size;
-
         // Initialize priority queue with first element from each file
         priority_queue<ChunkItem, vector<ChunkItem>, greater<ChunkItem>> pq;
         for (size_t i = 0; i < mapped_files.size(); i++) {
@@ -311,43 +240,34 @@ private:
                 pq.push({data[0], i, 0});
             }
         }
+        void *output_mapped = mmap(NULL, output_file_size, PROT_READ | PROT_WRITE,
+                                   MAP_SHARED, output_fd, 0);
+        global_sorted_mapped = output_mapped;
+        if (output_mapped == MAP_FAILED) {
+            cerr << "Failed to map output file at offset "
+                 <<" due to "<<strerror(errno)<< endl;
 
+            close(output_fd);
+            // Clean up mapped files
+            for (int i = 0; i < mapped_files.size(); i++) {
+                auto &[mapped, fd] = mapped_files[i];
+                if (mapped != MAP_FAILED) {
+                    munmap(mapped, file_sizes[i] * DATA_TYPE_SIZE);
+                }
+                if (fd != -1) {
+                    close(fd);
+                }
+            }
+            exit(-1);
+        }
+        size_t remaining_output_size = output_file_size;
         // Merge chunks
         while (!pq.empty() && remaining_output_size > 0) {
             // Map the next chunk of the output file
-            size_t chunk_size = min(OUTPUT_CHUNK_SIZE, remaining_output_size);
-            
-            // Align the output offset to page boundary
-            size_t aligned_offset = alignToPageSize(current_output_offset);
-            size_t offset_adjustment = current_output_offset - aligned_offset;
-            size_t aligned_chunk_size = chunk_size + offset_adjustment;
-
-            void *output_mapped = mmap(NULL, aligned_chunk_size, PROT_WRITE, MAP_SHARED,
-                                     output_fd, aligned_offset);
-            if (output_mapped == MAP_FAILED) {
-                cerr << "Failed to map output file at offset "
-                     << current_output_offset <<" due to "<<strerror(errno)<< endl;
-
-                close(output_fd);
-                // Clean up mapped files
-                for (int i = 0; i < mapped_files.size(); i++) {
-                    auto &[mapped, fd] = mapped_files[i];
-                    if (mapped != MAP_FAILED) {
-                        munmap(mapped, file_sizes[i] * DATA_TYPE_SIZE);
-                    }
-                    if (fd != -1) {
-                        close(fd);
-                    }
-                }
-                exit(-1);
-            }
-
-            // Adjust the pointer for the actual output position
-            char* aligned_ptr = static_cast<char*>(output_mapped);
-            long long *output_data = reinterpret_cast<long long *>(aligned_ptr + offset_adjustment);
+            long long *output_data = reinterpret_cast<long long *>(output_mapped);
             
             size_t output_elements_written = 0;
-            size_t max_elements_in_chunk = chunk_size / DATA_TYPE_SIZE;
+            size_t max_elements_in_chunk = CHUNK_SIZE / DATA_TYPE_SIZE;
 
             // Fill the current output chunk from the priority queue
             while (!pq.empty() &&
@@ -368,12 +288,12 @@ private:
             }
 
             // Synchronize and unmap the output chunk
-            msync(output_mapped, aligned_chunk_size, MS_SYNC);
-            munmap(output_mapped, aligned_chunk_size);
+            msync(output_mapped, CHUNK_SIZE, MS_SYNC);
 
             // Update offsets and remaining size
-            current_output_offset += output_elements_written * DATA_TYPE_SIZE;
             remaining_output_size -= output_elements_written * DATA_TYPE_SIZE;
+            output_mapped = static_cast<char *>(output_mapped) +
+                            output_elements_written * DATA_TYPE_SIZE;
         }
 
         close(output_fd);
@@ -392,6 +312,13 @@ private:
 public:
     ExternalDataManagerOptimized(const string &filename, size_t num_elements)
             : base_filename(filename), total_elements(num_elements) {}
+    ~ExternalDataManagerOptimized() {
+        // Clean up any remaining mapped regions
+        if (global_sorted_mapped != nullptr && global_sorted_mapped != MAP_FAILED) {
+            cout << "Cleaning up global sorted mapped region..." << endl;
+            munmap(global_sorted_mapped, total_elements * DATA_TYPE_SIZE);
+        }
+    }
 
     // Create a large dataset with random values for testing
     void generateTestData() {
@@ -533,58 +460,17 @@ public:
         }
     }
 
-    // In-place update of values - operates directly on the memory-mapped region
-    bool inPlaceSort(size_t start_element, size_t num_elements) {
-        cout << "Performing in-place sort of " << num_elements
-             << " elements starting at position " << start_element << "..."
-             << endl;
-
-        string data_file = base_filename + "_sorted.bin";
-
-        // Map the specified region
-        size_t offset = start_element * DATA_TYPE_SIZE;
-        size_t length = num_elements * DATA_TYPE_SIZE;
-
-        auto [mapped, fd] =
-                mapChunkForReadWrite(data_file, offset, num_elements);
-        if (mapped == MAP_FAILED) {
-
-            exit(-1);
-        }
-
-        // Sort the mapped region in-place
-        sortMappedChunk(mapped, num_elements);
-
-        // Sync and unmap
-        unmapChunk(mapped, length, fd);
-
-        cout << "In-place sort completed successfully" << endl;
-        return true;
-    }
-
     // Read a range of values from the sorted file
     vector<long long> readRange(size_t start, size_t count) {
-        string sorted_file = base_filename + "_sorted.bin";
-
-        auto [mapped, fd] =
-                mapChunkForReadWrite(sorted_file, start * DATA_TYPE_SIZE, count);
-        if (mapped == MAP_FAILED) {
-            cerr << "Failed to map file for reading" << " due to "<<strerror(errno)<<endl;
-            exit(-1);
-        }
-
         // Copy data to vector for return
-        long long *data = static_cast<long long *>(mapped);
-        vector<long long> result(data, data + count);
-
-        // Cleanup
-        unmapChunk(mapped, count * DATA_TYPE_SIZE, fd);
-
+        long long *data = static_cast<long long *>(global_sorted_mapped);
+        vector<long long> result(data + start,
+                                  data + min(start + count, total_elements));
         return result;
     }
 
     // Search for values using binary search - more efficient implementation
-    vector<size_t> searchValue(long long target) {
+    pair<size_t , size_t > searchValue(long long target) {
         string sorted_file = base_filename + "_sorted.bin";
         vector<size_t> positions;
 
@@ -592,102 +478,41 @@ public:
         size_t left = 0;
         size_t right = total_elements - 1;
 
-        while (left <= right) {
+        long long *data = static_cast<long long *>(global_sorted_mapped);
+
+        //find the lower boundary of position equal to target
+        while (left < right) {
             size_t mid = left + (right - left) / 2;
-
-            // Map just the value at the middle position
-            auto [mapped, fd] =
-                    mapChunkForReadWrite(sorted_file, mid * DATA_TYPE_SIZE, 1);
-            if (mapped == MAP_FAILED) {
-                return positions;
-            }
-
-            // Get the value
-            long long *data = static_cast<long long *>(mapped);
-            long long mid_value = data[0];
-
-            // Cleanup this mapping
-            unmapChunk(mapped, DATA_TYPE_SIZE, fd);
-
-            if (mid_value == target) {
-                // Found a match, now find all occurrences
-                positions.push_back(mid);
-
-                // Look left - we'll map larger chunks here for efficiency
-                const size_t SEARCH_CHUNK = 1000;
-                size_t left_start =
-                        (mid > SEARCH_CHUNK) ? (mid - SEARCH_CHUNK) : 0;
-                size_t left_count = mid - left_start;
-
-                if (left_count > 0) {
-                    auto [left_mapped, left_fd] = mapChunkForReadWrite(
-                            sorted_file, left_start * DATA_TYPE_SIZE, left_count);
-
-                    if (left_mapped != MAP_FAILED) {
-                        long long *left_data =
-                                static_cast<long long *>(left_mapped);
-
-                        // Scan backward for matches
-                        for (int i = left_count - 1; i >= 0; i--) {
-                            if (left_data[i] == target) {
-                                positions.push_back(left_start + i);
-                            } else if (left_data[i] < target) {
-                                // No more matches to the left
-                                break;
-                            }
-                        }
-
-                        unmapChunk(left_mapped, left_count * DATA_TYPE_SIZE,
-                                   left_fd);
-                    }
-                }
-
-                // Look right - also in chunks
-                size_t right_start = mid + 1;
-                size_t right_count =
-                        min(SEARCH_CHUNK, total_elements - right_start);
-
-                if (right_count > 0) {
-                    auto [right_mapped, right_fd] = mapChunkForReadWrite(
-                            sorted_file, right_start * DATA_TYPE_SIZE, right_count);
-
-                    if (right_mapped != MAP_FAILED) {
-                        long long *right_data =
-                                static_cast<long long *>(right_mapped);
-
-                        // Scan forward for matches
-                        for (size_t i = 0; i < right_count; i++) {
-                            if (right_data[i] == target) {
-                                positions.push_back(right_start + i);
-                            } else if (right_data[i] > target) {
-                                // No more matches to the right
-                                break;
-                            }
-                        }
-
-                        unmapChunk(right_mapped, right_count * DATA_TYPE_SIZE,
-                                   right_fd);
-                    }
-                }
-
-                break;
-            } else if (mid_value < target) {
+            long long mid_value = data[mid];
+            if (mid_value < target) {
                 left = mid + 1;
             } else {
-                if (mid == 0) break;
-                right = mid - 1;
+                right = mid;
             }
         }
+        size_t lower_boundary = data[right] == target ? right : -1;
+        //find the upper boundary of position equal to target
+        left = 0;
+        right = total_elements - 1;
+        while(left < right) {
+            size_t mid = left + (right - left) / 2;
+            long long mid_value = data[mid];
+            if (mid_value <= target) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        size_t right_boundary = data[right] == target ? right : (data[right-1] == target ? right - 1 : -1);
 
-        sort(positions.begin(), positions.end());
-        return positions;
+        return {lower_boundary, right_boundary};
     }
 };
 
 int main() {
     // Small test for demonstration
     // In reality this would handle billions of elements
-    const size_t TEST_SIZE = 1000000;  // 1 million elements for testing
+    const size_t TEST_SIZE = 100000000;  // 1 million elements for testing
 
     ExternalDataManagerOptimized manager("large_data_opt", TEST_SIZE);
 
@@ -697,7 +522,6 @@ int main() {
     cout << "2. Sort data (external sort with in-memory mapped chunks)" << endl;
     cout << "3. Read range" << endl;
     cout << "4. Search value" << endl;
-    cout << "5. In-place sort of a range" << endl;
     cout << "0. Exit" << endl;
 
     do {
@@ -732,28 +556,11 @@ int main() {
                 cout << "Enter value to search: ";
                 cin >> value;
 
-                vector<size_t> positions = manager.searchValue(value);
-                cout << "Found " << positions.size() << " occurrences" << endl;
-                for (size_t i = 0; i < min(size_t(10), positions.size()); i++) {
-                    cout << positions[i] << " ";
-                }
-                if (positions.size() > 10) cout << "...";
+                auto positions = manager.searchValue(value);
+                cout << "Position of value " << value << ": "
+                     << "Lower boundary: " << positions.first
+                     << ", Upper boundary: " << positions.second << endl;
                 cout << endl;
-                break;
-            }
-            case 5: {
-                size_t start, count;
-                cout << "Enter start position: ";
-                cin >> start;
-                cout << "Enter count: ";
-                cin >> count;
-
-                bool success = manager.inPlaceSort(start, count);
-                if (success) {
-                    cout << "In-place sort successful" << endl;
-                } else {
-                    cout << "In-place sort failed" << endl;
-                }
                 break;
             }
             case 0:

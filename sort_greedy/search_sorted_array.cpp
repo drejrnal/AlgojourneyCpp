@@ -82,7 +82,7 @@ public:
                 high = mid;
             }
         }
-        return nums[low] == target ? low - 1 : -1;
+        return nums[low] == target ? low : (nums[low-1] == target ? low - 1 : -1);
     }
 
     /**
@@ -153,12 +153,15 @@ public:
 };
 
 int main() {
-    vector<int> nums = {-1, 0, 0, 3, 7, 8, 11, 16, 16, 18, 19, 23, -22,
-                        -20, -20, -19, -18, -12, -11, -7, -7, -7, -7, -6, -4, -2};
+    vector<int> nums = { -22,-20, -20, -19, -18, -12, -11, -7,-7, -6, -4, -2,
+                         -1, 0, 0, 3, 7, 8, 11, 16, 16, 18, 19, 23
+    };
+    vector<int> nums1 = { 9, 10};
     int target = -7;
     biSearchInArray biSearch;
-    std:
     cout << biSearch.searchLowestInRotatedArray(nums, target) << std::endl;
-    assert(biSearch.searchInArrayLeftBound(nums, target) == biSearchInArray::searchInRotatedArrayLeftBound(nums, target));
+    //assert(biSearch.searchInArrayLeftBound(nums, target) == biSearchInArray::searchInRotatedArrayLeftBound(nums, target));
+    cout<<biSearch.searchInArrayRightBound(nums, target)<<endl;
+    cout<<biSearch.searchInArrayRightBound(nums1, 10)<<endl;
     return 0;
 }

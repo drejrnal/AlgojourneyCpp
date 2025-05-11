@@ -1,4 +1,8 @@
-add_executable(lisp_parser lisp_parser.cpp)
-add_executable(expression_eval expression_eval.cpp)
-add_executable(monotonous_stack monotonous_stack.cpp)
-add_executable(stack_pop_sequence stack_pop_sequence.cpp)
+file(GLOB_RECURSE SORT_GREEDY_SERIES_QA
+        "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+
+foreach (source_file ${SORT_GREEDY_SERIES_QA})
+    get_filename_component(executable_name ${source_file} NAME_WE)
+    add_executable(${executable_name} ${source_file})
+endforeach ()
